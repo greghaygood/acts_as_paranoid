@@ -62,6 +62,10 @@ class Category < ActiveRecord::Base
   def self.search_with_deleted(name, options = {})
     find_with_deleted :all, options.merge(:conditions => ['LOWER(title) LIKE ?', "%#{name.to_s.downcase}%"])
   end
+  
+  def after_recover
+    self.title << " (recovered)"
+  end
 end
 
 class Tag < ActiveRecord::Base

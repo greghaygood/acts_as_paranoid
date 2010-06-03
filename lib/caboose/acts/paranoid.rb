@@ -64,6 +64,7 @@ module Caboose #:nodoc:
             end
           end
           include InstanceMethods
+          define_callbacks 'before_recover', 'after_recover'
         end
 
         def paranoid?
@@ -199,6 +200,18 @@ module Caboose #:nodoc:
           self.send("#{deleted_attribute}=".to_sym, nil)
           save!
         end
+        
+        def before_recover;  end
+        def after_recover;  end
+        
+        def recover_with_callbacks!
+          return false if callback(:before_recover) == false
+          result = recover_without_callbacks!
+          callback(:after_recover)
+          result
+        end
+        private :recover_with_callbacks!
+        alias_method_chain :recover!, :callbacks
         
         def recover_with_associations!(*associations)
           self.recover!
