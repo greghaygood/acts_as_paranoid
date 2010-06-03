@@ -4,6 +4,7 @@ ActiveRecord::Schema.define(:version => 1) do
     t.column :title, :string, :limit => 50
     t.column :category_id, :integer
     t.column :deleted_at, :timestamp
+    t.column :lock_version, :integer, :default => 0
   end
 
   create_table :categories, :force => true do |t|

@@ -239,4 +239,12 @@ class ParanoidTest < ActiveSupport::TestCase
     assert_equal false, Widget.find(1).deleted?
     assert_equal false, Category.find(1).deleted?
   end
+  
+  def test_destroy_with_optimistic_locking
+    widget1 = Widget.find(1)
+    Widget.find(1).update_attributes(:title => "New Title")
+    assert_raise ActiveRecord::StaleObjectError do
+      widget1.destroy
+    end
+  end
 end
