@@ -1,3 +1,9 @@
+require 'caboose/acts/paranoid'
+require 'caboose/acts/paranoid_find_wrapper'
+require 'caboose/acts/belongs_to_with_deleted_association'
+require 'caboose/acts/belongs_to_with_deleted_polymorphic_association'
+require 'caboose/acts/has_many_through_without_deleted_association'
+require 'caboose/acts/has_one_with_deleted_association'
 class << ActiveRecord::Base
   def belongs_to_with_deleted(association_id, options = {})
     with_deleted = options.delete :with_deleted
@@ -43,7 +49,6 @@ class << ActiveRecord::Base
   alias_method_chain :belongs_to, :deleted
   alias_method :has_many_with_deleted, :has_many
   alias_method :has_many, :has_many_without_deleted
-  alias_method :exists_with_deleted?, :exists?
 end
 ActiveRecord::Base.send :include, Caboose::Acts::Paranoid
 ActiveRecord::Base.send :include, Caboose::Acts::ParanoidFindWrapper

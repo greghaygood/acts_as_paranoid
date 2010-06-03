@@ -103,12 +103,18 @@ module Caboose #:nodoc:
             end
           end
 
-          def exists?(*args)
-            with_deleted_scope { exists_with_deleted?(*args) }
+          def exists_only_deleted?(id_or_conditions = {})
+            find_initial(
+              :select => "#{quoted_table_name}.#{primary_key}",
+              :conditions => expand_id_conditions(id_or_conditions),
+              :only_deleted => true) ? true : false
           end
-
-          def exists_only_deleted?(*args)
-            with_only_deleted_scope { exists_with_deleted?(*args) }
+          
+          def exists_with_deleted?(id_or_conditions = {})
+            find_initial(
+              :select => "#{quoted_table_name}.#{primary_key}",
+              :conditions => expand_id_conditions(id_or_conditions),
+              :with_deleted => true) ? true : false
           end
 
           def count_with_deleted(*args)

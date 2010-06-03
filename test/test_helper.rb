@@ -1,47 +1,82 @@
-$:.unshift(File.dirname(__FILE__) + '/../lib')
+$:.unshift(File.join(File.dirname(__FILE__), '/../lib'))
+ENV["RAILS_ENV"] = "test"
+PLUGIN_ROOT = File.expand_path(File.join(File.dirname(__FILE__), '..'))
 
 require 'test/unit'
 require 'rubygems'
-if ENV['RAILS'].nil?
-  require File.expand_path(File.join(File.dirname(__FILE__), '../../../../config/environment.rb'))
-else
-  # specific rails version targeted
-  # load activerecord and plugin manually
-  gem 'activerecord', "=#{ENV['RAILS']}"
-  require 'active_record'
-  $LOAD_PATH << File.join(File.dirname(__FILE__), '..', 'lib')
-  Dir["#{$LOAD_PATH.last}/**/*.rb"].each do |path| 
-    require path[$LOAD_PATH.last.size + 1..-1]
-  end
-  require File.join(File.dirname(__FILE__), '..', 'init.rb')
-end
+require 'rubygems'
+require 'active_support'
+require 'active_record'
 require 'active_record/fixtures'
+require 'active_support/test_case'
+require 'active_record/test_case'
+require 'active_record/fixtures'
+require File.join(PLUGIN_ROOT, 'init')
 
-config = YAML::load(IO.read(File.dirname(__FILE__) + '/database.yml'))
-# do this so fixtures will load
-ActiveRecord::Base.configurations.update config 
 ActiveRecord::Base.logger = Logger.new(File.dirname(__FILE__) + "/debug.log")
-ActiveRecord::Base.establish_connection(config[ENV['DB'] || 'sqlite3'])
+ActiveRecord::Base.configurations = {'test' => {:adapter => "sqlite3", :dbfile => ":memory:"}}
+ActiveRecord::Base.establish_connection(:test)
 
 load(File.dirname(__FILE__) + "/schema.rb")
 
-Test::Unit::TestCase.fixture_path = File.dirname(__FILE__) + "/fixtures/"
-$LOAD_PATH.unshift(Test::Unit::TestCase.fixture_path)
+class ActiveSupport::TestCase
+  include ActiveRecord::TestFixtures
+  self.fixture_path = File.join(File.dirname(__FILE__), "/fixtures/")
+  self.use_instantiated_fixtures  = false
+  self.use_transactional_fixtures = true
 
-class Test::Unit::TestCase #:nodoc:
   def create_fixtures(*table_names)
     if block_given?
-      Fixtures.create_fixtures(Test::Unit::TestCase.fixture_path, table_names) { yield }
+      Fixtures.create_fixtures(ActiveSupport::TestCase.fixture_path, table_names) { yield }
     else
-      Fixtures.create_fixtures(Test::Unit::TestCase.fixture_path, table_names)
+      Fixtures.create_fixtures(ActiveSupport::TestCase.fixture_path, table_names)
     end
   end
+end
 
-  # Turn off transactional fixtures if you're working with MyISAM tables in MySQL
-  self.use_transactional_fixtures = true
-  
-  # Instantiated fixtures are slow, but give you @david where you otherwise would need people(:david)
-  self.use_instantiated_fixtures  = false
+$LOAD_PATH.unshift(ActiveSupport::TestCase.fixture_path)
 
-  # Add more helper methods to be used by all tests here...
+class NonParanoidAndroid < ActiveRecord::Base
+end
+
+class Widget < ActiveRecord::Base
+  acts_as_paranoid
+  has_many :categories, :dependent => :destroy
+  has_and_belongs_to_many :habtm_categories, :class_name => 'Category'
+  has_one :category
+  belongs_to :parent_category, :class_name => 'Category'
+  has_many :taggings
+  has_many :tags, :through => :taggings
+  has_many :any_tags, :through => :taggings, :class_name => 'Tag', :source => :tag, :with_deleted => true
+end
+
+class Category < ActiveRecord::Base
+  belongs_to :widget
+  belongs_to :any_widget, :class_name => 'Widget', :foreign_key => 'widget_id', :with_deleted => true
+  acts_as_paranoid
+
+  def self.search(name, options = {})
+    find :all, options.merge(:conditions => ['LOWER(title) LIKE ?', "%#{name.to_s.downcase}%"])
+  end
+
+  def self.search_with_deleted(name, options = {})
+    find_with_deleted :all, options.merge(:conditions => ['LOWER(title) LIKE ?', "%#{name.to_s.downcase}%"])
+  end
+end
+
+class Tag < ActiveRecord::Base
+  has_many :taggings
+  has_many :widgets, :through => :taggings
+end
+
+class Tagging < ActiveRecord::Base
+  belongs_to :tag
+  belongs_to :widget
+  acts_as_paranoid
+end
+
+class Array
+  def ids
+    collect &:id
+  end
 end

@@ -1,45 +1,6 @@
 require File.join(File.dirname(__FILE__), 'test_helper')
 
-class Widget < ActiveRecord::Base
-  acts_as_paranoid
-  has_many :categories, :dependent => :destroy
-  has_and_belongs_to_many :habtm_categories, :class_name => 'Category'
-  has_one :category
-  belongs_to :parent_category, :class_name => 'Category'
-  has_many :taggings
-  has_many :tags, :through => :taggings
-  has_many :any_tags, :through => :taggings, :class_name => 'Tag', :source => :tag, :with_deleted => true
-end
-
-class Category < ActiveRecord::Base
-  belongs_to :widget
-  belongs_to :any_widget, :class_name => 'Widget', :foreign_key => 'widget_id', :with_deleted => true
-  acts_as_paranoid
-
-  def self.search(name, options = {})
-    find :all, options.merge(:conditions => ['LOWER(title) LIKE ?', "%#{name.to_s.downcase}%"])
-  end
-
-  def self.search_with_deleted(name, options = {})
-    find_with_deleted :all, options.merge(:conditions => ['LOWER(title) LIKE ?', "%#{name.to_s.downcase}%"])
-  end
-end
-
-class Tag < ActiveRecord::Base
-  has_many :taggings
-  has_many :widgets, :through => :taggings
-end
-
-class Tagging < ActiveRecord::Base
-  belongs_to :tag
-  belongs_to :widget
-  acts_as_paranoid
-end
-
-class NonParanoidAndroid < ActiveRecord::Base
-end
-
-class ParanoidTest < Test::Unit::TestCase
+class ParanoidTest < ActiveSupport::TestCase
   fixtures :widgets, :categories, :categories_widgets, :tags, :taggings
   
   def test_should_recognize_with_deleted_option
@@ -277,11 +238,5 @@ class ParanoidTest < Test::Unit::TestCase
     Widget.find_with_deleted(1).recover_with_associations!(:categories)
     assert_equal false, Widget.find(1).deleted?
     assert_equal false, Category.find(1).deleted?
-  end
-end
-
-class Array
-  def ids
-    collect &:id
   end
 end
