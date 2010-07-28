@@ -177,13 +177,15 @@ module Caboose #:nodoc:
         def destroy_without_callbacks
           unless new_record?
             if locking_enabled?
-              previous_lock_value = send(self.class.locking_column).to_i
+              previous_lock_value = self.send(self.class.locking_column).to_i
+              updates_sql = self.class.send(:sanitize_sql, 
+                ["#{self.class.deleted_attribute} = ?, #{self.class.quoted_locking_column} = ?", 
+                  (self.send("#{self.class.deleted_attribute}=".to_sym, self.class.send(:current_time))),
+                  (self.send("#{self.class.locking_column}=", previous_lock_value+1))])
+              update_conditions = ["#{self.class.primary_key} = ? AND #{self.class.quoted_locking_column} = #{quote_value(previous_lock_value)}", id]
               
-              affected_rows = self.class.update_all(
-                self.class.send(:sanitize_sql, 
-                  ["#{self.class.deleted_attribute} = ?", (self.send("#{self.class.deleted_attribute}=".to_sym, self.class.send(:current_time)))]),
-                ["#{self.class.primary_key} = ? AND #{self.class.quoted_locking_column} = #{quote_value(previous_lock_value)}", id])
-                
+              affected_rows = self.class.update_all(updates_sql, update_conditions)
+              
               unless affected_rows == 1
                 raise ActiveRecord::StaleObjectError, "Attempted to delete a stale object: #{self.class.name}"
               end
